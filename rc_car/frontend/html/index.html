@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RC-Car (Elm version)</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+    <!-- JQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.1/jquery.min.js"></script>
+    <!-- MapxobGL -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
+    <!-- semantic UI -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.10/semantic.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.10/semantic.min.css" rel="stylesheet" />
+
+    <!-- <link href="css/dashboard.css" rel="stylesheet" /> -->
+</head>
+<body>
+</body>
+<script type="text/javascript" src="/js/index.js"></script>
+<script>
+    // window.location.host + "/sys"
+    var node = document.body
+    var app = Elm.Main.embed(node, {
+        'sys_url': "ws://" + window.location.host + "/sys"
+    });
+</script>
+</html>

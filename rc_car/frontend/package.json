@@ -1,0 +1,17 @@
+{
+    "name": "RC-CAR",
+    "version": "1.0.0",
+    "description": "",
+    "dependencies": {
+        "elm": "^0.18.0"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "ssh://github.com/habibutsu/rc-car"
+    },
+    "author": "Alexander Verbitsky",
+    "license": "MIT"
+}

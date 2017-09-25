@@ -1,0 +1,7 @@
+*.pyc
+npm-debug.log
+.idea
+node_modules
+public
+js
+elm-stuff
