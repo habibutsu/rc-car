@@ -1,0 +1,11 @@
+[server]
+host = 0.0.0.0
+port = 9000
+
+[model]
+use_mock = True
+
+[camera]
+type = 'picamera'   ; picamera | mock | usb
+width = 480
+height = 360
