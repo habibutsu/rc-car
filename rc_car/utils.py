@@ -1,16 +1,30 @@
 import asyncio
 import logging
 import traceback
+import configparser
+import time
 
+from contextlib import contextmanager
 from types import SimpleNamespace
 from collections import Counter
 
-from rc_car.constants import DEFAULT_CFG
+
+@contextmanager
+def track_time():
+    start = time.time()
+    elapsed = lambda: time.time() - start
+    yield lambda: elapsed()
+    end = time.time()
+    elapsed = lambda: end - start
 
 
-def processing_confg(config_parser):
+def load_config(default_cfg, config_file=None):
+    config_parser = configparser.ConfigParser()
+    if config_file:
+        config_parser.read_file(config_file)
+
     cfg_dict = {}
-    for section, default in DEFAULT_CFG.items():
+    for section, default in default_cfg.items():
         section_obj = config_parser[section] if section in config_parser else {}
         cfg_dict[section] = {}
         for key, default_value in default.items():
@@ -23,7 +37,12 @@ def processing_confg(config_parser):
             cfg_dict[section][key] = value
         cfg_dict[section] = SimpleNamespace(**cfg_dict[section])
 
-    return SimpleNamespace(**cfg_dict)
+    cfg = SimpleNamespace(**cfg_dict)
+    # # update log level
+    # for logger in LOGGING.get('loggers', {}).values():
+    #     logger['level'] = cfg.server.log_level.upper()
+    # logging.config.dictConfig(LOGGING)
+    return cfg
 
 
 class OneLineExceptionFormatter(logging.Formatter):

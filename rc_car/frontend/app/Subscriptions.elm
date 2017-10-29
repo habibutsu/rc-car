@@ -11,6 +11,9 @@ import Constants exposing (echoServer)
 type Msg
     = MouseMsg Mouse.Position
     | ButtonClick String
+    | ChangeMode String
+    | SwitchHeadlamp
+    | ChangeDelay String
     | KeyMsg Keyboard.KeyCode
     | WebsocketMsg String
 

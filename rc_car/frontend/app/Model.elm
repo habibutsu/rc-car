@@ -8,17 +8,33 @@ type alias Flags =
   { sys_url : String
   }
 
+type alias Sensors =
+  { throttle: Float
+  , rudder: Int
+  , radar: Float
+  , accelerometer: List Float
+  --, speed: Int
+  --, driving_mode: DrivingMode
+  }
+
+
 type DrivingMode
   = Self
   | Record
   | Free
 
-type alias Car =
-  { accelerator: Int
-  , steering: Int
-  , speed: Int
-  , driving_mode: DrivingMode
+
+type HeadLampState
+  = On
+  | Off
+
+
+type alias Prameters =
+  { mode: DrivingMode
+  , delay: Maybe Int
+  , headlamp: HeadLampState
   }
+
 
 fromStringDrivingMode : String -> Json.Decode.Decoder DrivingMode
 fromStringDrivingMode string =
@@ -30,7 +46,7 @@ fromStringDrivingMode string =
     "free" ->
         Json.Decode.succeed Free
     somethingElse ->
-        Json.Decode.fail <| "Unknown theme: " ++ somethingElse
+        Json.Decode.fail <| "Unknown mode: " ++ somethingElse
 
 
 decodeDrivingMode : Json.Decode.Decoder DrivingMode
@@ -38,16 +54,41 @@ decodeDrivingMode =
   Json.Decode.string
     |> Json.Decode.andThen fromStringDrivingMode
 
+
+fromStringHeadLampState : String -> Json.Decode.Decoder HeadLampState
+fromStringHeadLampState string =
+  case string of
+    "on" ->
+        Json.Decode.succeed On
+    "off" ->
+        Json.Decode.succeed Off
+    somethingElse ->
+        Json.Decode.fail <| "Unknown state: " ++ somethingElse
+
+
+decodeHeadLampState : Json.Decode.Decoder HeadLampState
+decodeHeadLampState =
+  Json.Decode.string
+    |> Json.Decode.andThen fromStringHeadLampState
+
+
+parametersJsonDecoder =
+  Json.Decode.map3 Prameters
+    (Json.Decode.field "mode" decodeDrivingMode)
+    (Json.Decode.field "delay" (Json.Decode.nullable Json.Decode.int))
+    (Json.Decode.field "headlamp" decodeHeadLampState)
+
 {-encodeDrivingMode : DrivingMode -> Json.Decode.Value
 encodeDrivingMode =
   toString >> Json.Encode.string-}
 
 carJsonDecoder =
-  Json.Decode.map4 Car
-    (Json.Decode.field "accelerator" Json.Decode.int)
-    (Json.Decode.field "steering" Json.Decode.int)
-    (Json.Decode.field "speed" Json.Decode.int)
-    (Json.Decode.field "driving_mode" decodeDrivingMode)
+  Json.Decode.map4 Sensors
+    (Json.Decode.field "throttle" Json.Decode.float)
+    (Json.Decode.field "rudder" Json.Decode.int)
+    (Json.Decode.field "radar" Json.Decode.float)
+    (Json.Decode.field "accelerometer" (Json.Decode.list Json.Decode.float))
+
 
 {-carJsonDecoder =
   decode Car
@@ -57,7 +98,8 @@ carJsonDecoder =
 -}
 type alias Model =
   { flags: Flags
-  , car: Car
+  , sensors: Sensors
+  , parameters: Prameters
   }
 
 
@@ -68,4 +110,4 @@ type alias Error =
 
 init : Flags -> Model
 init flags =
-  Model flags (Car 0 0 0 Free)
+  Model flags (Sensors 0 0 0 [0,0,0]) (Prameters Free Nothing Off)

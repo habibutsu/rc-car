@@ -1,21 +1,34 @@
-import asyncio
-import logging
 import datetime
+import logging
 import ctypes
 import time
+from threading import Thread
 from multiprocessing import Array, Process, Event
-
-from aiohttp.web import (
-    StreamResponse
-)
 
 import numpy as np
 import cv2
 
-logger = logging.getLogger()
+
+logger = logging.getLogger('rc-car')
 
 
-class AstractProcessCameraDevice:
+class USBCamera:
+
+    def __init__(self, width, height, framerate=25):
+        self.width = width
+        self.height = height
+        self.camera = cv2.VideoCapture(0)
+
+    def read(self):
+        _result, image = self.camera.read()
+        image = cv2.resize(image, (self.width, self.height))
+        return image
+
+    def release(self):
+        self.camera.release()
+
+
+class AstractProcessCamera:
     '''
         polling the camera in separate process
     '''
@@ -54,7 +67,7 @@ class AstractProcessCameraDevice:
         self._process.join()
 
 
-class USBProcessCameraDevice(AstractProcessCameraDevice):
+class USBProcessCamera(AstractProcessCamera):
 
     @classmethod
     def update(cls, is_running, shared_array, width, height, framerate):
@@ -73,7 +86,59 @@ class USBProcessCameraDevice(AstractProcessCameraDevice):
             camera.release()
 
 
-class PiProcessCameraDevice(AstractProcessCameraDevice):
+class PiThreadCamera:
+
+    def __init__(self, width, height, framerate=25):
+        import picamera
+        import picamera.array
+        self.width = width
+        self.height = height
+        self.camera = picamera.PiCamera()
+        self.camera.resolution = (self.width, self.height)
+        self.camera.framerate = framerate
+        self.raw_capture = picamera.array.PiRGBArray(
+            self.camera, size=(self.width, self.height))
+        self.stream = self.camera.capture_continuous(
+            self.raw_capture, format="bgr", use_video_port=True)
+
+        # initialize the frame and the variable used to indicate
+        # if the thread should be stopped
+        self.frame = None
+        self.stopped = False
+        # start the thread to read frames from the video stream
+        self.thread = Thread(target=self.update, args=())
+        self.thread.start()
+
+    def update(self):
+        logger.info('Start streaming from camera')
+        # keep looping infinitely until the thread is stopped
+        for f in self.stream:
+            # grab the frame from the stream and clear the stream in
+            # preparation for the next frame
+            self.frame = f.array
+            self.raw_capture.truncate(0)
+
+            # if the thread indicator variable is set, stop the thread
+            # and resource camera resources
+            if self.stopped:
+                self.stream.close()
+                self.raw_capture.close()
+                self.camera.close()
+                return
+
+    def read(self):
+        # return the frame most recently read
+        # image = cv2.resize(self.frame, (self.width, self.height))
+        return self.frame
+
+    def release(self):
+        # indicate that the thread should be stopped
+        self.stopped = True
+        logger.info('Wait camera thread')
+        self.thread.join()
+
+
+class PiProcessCamera(AstractProcessCamera):
 
     @classmethod
     def update(cls, is_running, shared_array, width, height, framerate):
@@ -113,7 +178,27 @@ class PiProcessCameraDevice(AstractProcessCameraDevice):
             return
 
 
-class MockCameraDevice:
+class PiCamera:
+
+    def __init__(self, width, height, framerate=25):
+        import picamera
+        self.width = width
+        self.height = height
+        self.camera = picamera.PiCamera()
+        self.camera.resolution = (self.width, self.height)
+        self.camera.framerate = framerate
+        time.sleep(1)
+
+    def read(self):
+        output = np.empty((self.height, self.width, 3), dtype=np.uint8)
+        self.camera.capture(output, 'bgr')
+        return output
+
+    def release(self):
+        self.camera.close()
+
+
+class MockCamera:
 
     def __init__(self, width, height, framerate=25):
         self.width = width
@@ -138,60 +223,3 @@ class MockCameraDevice:
 
     def release(self):
         pass
-
-
-class Camera:
-
-    def register(self, server):
-        app = server.aiohttp_app
-        app.router.add_get('/video', self.handle)
-        self.camera = CAMERA_CLS[server.cfg.camera.type](
-            server.cfg.camera.width,
-            server.cfg.camera.height,
-            server.cfg.camera.framerate
-        )
-        logger.info('Using %s camera', self.camera)
-
-        app.on_shutdown.append(self.on_shutdown)
-
-    async def on_shutdown(self, app):
-        self.camera.release()
-
-    async def handle(self, request):
-        server = request.app['server']
-        _width = int(request.query.get('width', 1280))      # noqa: F841
-        _height = int(request.query.get('height', 720))     # noqa: F841
-        response = StreamResponse()
-        response.headers['Content-Type'] = 'multipart/x-mixed-replace; boundary=frame'
-        response.headers['Cache-Control'] = 'no-cache'
-        response.headers['Connection'] = 'keep-alive'
-        # response.enable_chunked_encoding()
-        await response.prepare(request)
-
-        while True:
-            try:
-                image = self.camera.read()
-                _result, jpg_image = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, 60])
-
-                response.write(b'--frame\r\n')
-                response.write(b'Content-Type: image/jpeg\r\n\r\n')
-                response.write(jpg_image.tobytes())
-                response.write(b'\r\n')
-                await response.drain()
-                await asyncio.sleep(1 / server.cfg.camera.framerate)
-            except asyncio.CancelledError as e:
-                break
-            except Exception as e:
-                # https://github.com/aio-libs/aiohttp/issues/1893
-                logger.exception(e)
-                break
-
-        await response.write_eof()
-        return response
-
-
-CAMERA_CLS = {
-    'mock': MockCameraDevice,
-    'picamera': PiProcessCameraDevice,
-    'usb': USBProcessCameraDevice
-}

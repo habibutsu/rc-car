@@ -10,23 +10,28 @@ if sys.version_info < MIN_PYTHON:
     sys.exit(1)
 
 
-with open(os.path.join(os.path.dirname(__file__), 'requirements.txt')) as fd:
-    requirements = [l.strip() for l in fd.readlines()]
+def get_requirements(directory=None):
+    filename = os.path.join(
+        os.path.dirname(__file__),
+        os.path.join(directory, 'requirements.txt') \
+            if directory else 'requirements.txt'
+    )
+    with open(filename) as fd:
+        return [l.strip() for l in fd.readlines()]
 
 
 setup(
     name='rc-car',
-    #version='0.1.{}'.format(dt.datetime.now().strftime('%Y%m%d')),
     version='0.1',
     description='RC-car server',
     author='Alexander Verbitskiy',
     author_email='habibutsu@gmail.com',
-    license=license,
     packages=['rc_car'],
     package_data={
         'rc_car': [
             '../requirements.txt',
             'handlers/*.py',
+            'components/*.py',
             'frontend/elm-package.json',
             'frontend/package.json',
             'frontend/app/*.*',
@@ -36,5 +41,5 @@ setup(
         ],
     },
     test_suite='test',
-    install_requires=requirements,
+    install_requires=get_requirements(),
 )

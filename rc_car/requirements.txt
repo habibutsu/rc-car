@@ -5,8 +5,3 @@ picamera[array]==1.13
 imutils==0.4.3
 pysmbus==0.1
 mpu6050-raspberrypi==1.0.3.4
-aiohttp==2.2.0
-aiohttp-index==0.1
-fastjsonschema==1.1
-ujson==1.35
-joblib==0.11

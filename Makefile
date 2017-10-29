@@ -1,5 +1,6 @@
 SRC_DIR=$(shell pwd)
 NPM:=npm --prefix $(SRC_DIR)/rc_car/frontend
+RASPBERRY_HOST:=192.168.100.1
 
 deps:
 	$(NPM) update
@@ -10,13 +11,14 @@ build:
 	cd $(SRC_DIR)/rc_car/frontend && $(shell ${NPM} bin)/elm-make \
 		app/Main.elm --output=js/index.js
 
-dev-server: build
-	python -m rc_car
+run: build
+	mkdir -p data
+	python -m rc_car --config ${SRC_DIR}/conf/rc_car.ini
 
 deploy:
 	rm -rf dist
 	python setup.py sdist
-	scp ./dist/rc-car-0.1.tar.gz pi@192.168.100.6:~/rc-car-0.1.tar.gz
+	scp ./dist/rc-car-0.1.tar.gz pi@${RASPBERRY_HOST}:~/rc-car-0.1.tar.gz
 
 lint:
 	flake8 \
